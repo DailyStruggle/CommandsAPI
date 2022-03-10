@@ -1,0 +1,6 @@
+name: CommandsAPI
+version: '${project.version}'
+main: io.github.dailystruggle.commandsapi.CommandsAPI
+api-version: 1.13
+authors: [ leaf26 ]
+description: centralized command and tabcompletion code
