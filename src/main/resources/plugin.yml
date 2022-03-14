@@ -1,6 +1,6 @@
 name: CommandsAPI
 version: '${project.version}'
-main: io.github.dailystruggle.commandsapi.CommandsAPI
+main: io.github.dailystruggle.commandsapi.bukkit.CommandsAPI
 api-version: 1.13
 authors: [ leaf26 ]
 description: centralized command and tabcompletion code
