@@ -9,23 +9,36 @@ import io.github.dailystruggle.commandsapi.common.localCommands.TreeCommand;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
 
 public abstract class BukkitTreeCommand extends BukkitCommand implements TreeCommand {
     protected final Map<String, CommandParameter> parameterLookup = new ConcurrentHashMap<>();
+
+    private final CommandsAPICommand parent;
 
     // key: command name
     // value: command object
     protected final Map<String, CommandsAPICommand> commandLookup = new ConcurrentHashMap<>();
 
-    public BukkitTreeCommand(Plugin plugin) {
+    public BukkitTreeCommand(Plugin plugin, @Nullable CommandsAPICommand parent) {
         super(plugin);
+        PluginCommand command = Bukkit.getPluginCommand(name());
+        if(command!=null) {
+            command.setExecutor(this);
+            command.setTabCompleter(this);
+        }
+        this.parent = parent;
+    }
+
+    @Override
+    public CommandsAPICommand parent() {
+        return parent;
     }
 
     @Override
@@ -34,11 +47,13 @@ public abstract class BukkitTreeCommand extends BukkitCommand implements TreeCom
         if(sender instanceof Player) {
             senderId = ((Player) sender).getUniqueId();
         }
-        else senderId = CommandsAPI.serverId;
+        else if(sender.getName().equals(Bukkit.getConsoleSender().getName())) senderId = CommandsAPI.serverId;
+        else {
+            sender.sendMessage("alternate command senders not currently supported");
+            return false;
+        }
 
-        Predicate<String> permissionCheckMethod = sender::hasPermission;
-        Consumer<String> messageMethod = sender::sendMessage;
-        return onCommand(senderId,permissionCheckMethod,messageMethod,args);
+        return onCommand(senderId,sender::hasPermission,sender::sendMessage,args, 0);
     }
 
     @Override
@@ -47,10 +62,10 @@ public abstract class BukkitTreeCommand extends BukkitCommand implements TreeCom
         if(sender instanceof Player) {
             senderId = ((Player) sender).getUniqueId();
         }
-        else senderId = CommandsAPI.serverId;
+        else if(sender.getName().equals(Bukkit.getConsoleSender().getName())) senderId = CommandsAPI.serverId;
+        else return null;
 
-        Predicate<String> permissionCheckMethod = sender::hasPermission;
-        return onTabComplete(senderId,permissionCheckMethod,args);
+        return onTabComplete(senderId,sender::hasPermission,args, 0);
     }
 
     @Override

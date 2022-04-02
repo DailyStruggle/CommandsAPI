@@ -9,8 +9,8 @@ import java.util.UUID;
 import java.util.function.BiFunction;
 
 public abstract class BukkitParameter extends CommandParameter {
-    public BukkitParameter(BiFunction<CommandSender, String, Boolean> isRelevant) {
-        super((UUID callerId, String s) -> {
+    public BukkitParameter(String permission, String description, BiFunction<CommandSender, String, Boolean> isRelevant) {
+        super(permission, description, (UUID callerId, String s) -> {
             CommandSender commandSender;
             if(callerId.equals(CommandsAPI.serverId)) {
                 commandSender = Bukkit.getConsoleSender();
@@ -22,5 +22,4 @@ public abstract class BukkitParameter extends CommandParameter {
             return isRelevant.apply(commandSender,s);
         });
     }
-
 }

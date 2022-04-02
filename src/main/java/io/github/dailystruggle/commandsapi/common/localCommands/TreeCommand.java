@@ -3,7 +3,6 @@ package io.github.dailystruggle.commandsapi.common.localCommands;
 import io.github.dailystruggle.commandsapi.common.CommandsAPI;
 import io.github.dailystruggle.commandsapi.common.CommandsAPICommand;
 import io.github.dailystruggle.commandsapi.common.CommandParameter;
-import org.bukkit.Bukkit;
 
 import java.util.*;
 import java.util.function.*;
@@ -26,9 +25,7 @@ public interface TreeCommand extends CommandsAPICommand {
     Map<String, CommandParameter> getParameterLookup();
     Map<String, CommandsAPICommand> getCommandLookup();
 
-    default List<String> onTabComplete(UUID callerId, Predicate<String> permissionCheckMethod, String[] args) {
-        //todo: optimize out any Arrays.copyOfRange calls, hopefully using a single pass on the args
-        int i = 0;
+    default List<String> onTabComplete(UUID callerId, Predicate<String> permissionCheckMethod, String[] args, int i) {
         Set<String> parameterValues = new HashSet<>();
         while (i<args.length && args[i].contains(String.valueOf(CommandsAPI.parameterDelimiter))) {
             if(i<args.length-1) {
@@ -77,7 +74,7 @@ public interface TreeCommand extends CommandsAPICommand {
         else {
             CommandsAPICommand nextCommand = getCommandLookup().get(args[i].toUpperCase());
             if(nextCommand != null) {
-                return nextCommand.onTabComplete(callerId,permissionCheckMethod, Arrays.copyOfRange(args,i+1,args.length));
+                return nextCommand.onTabComplete(callerId,permissionCheckMethod, args,i);
             }
             else {
                 for (Map.Entry<String, CommandParameter> entry : getParameterLookup().entrySet()) {
@@ -90,14 +87,15 @@ public interface TreeCommand extends CommandsAPICommand {
             }
         }
 
+        possibleResults.add("help");
         if(args.length > 0) return possibleResults.stream().filter(s -> s.startsWith(args[args.length-1])).collect(Collectors.toList());
         else return possibleResults;
     }
 
-    default boolean onCommand(UUID callerId, Predicate<String> permissionCheckMethod, Consumer<String> messageMethod, String[] args) {
+    default boolean onCommand(UUID callerId, Predicate<String> permissionCheckMethod, Consumer<String> messageMethod, String[] args, int i) {
         if(!permissionCheckMethod.test(permission())) return false;
         Map<String,List<String>> parameterValues = new HashMap<>();
-        for (int i = 0; i < args.length; i++) {
+        for (; i < args.length; i++) {
             String arg = args[i];
 
             //catch delimiter with no value
@@ -108,6 +106,11 @@ public interface TreeCommand extends CommandsAPICommand {
 
             String[] argSplit = arg.split(String.valueOf(CommandsAPI.parameterDelimiter));
             if (argSplit.length < 2) {//if it's a sub-command, process the current command and run the subcommand
+                if(arg.equalsIgnoreCase("help")) {
+                    help(callerId,permissionCheckMethod).forEach(messageMethod);
+                    return true;
+                }
+
                 CommandsAPICommand subCommand = getCommandLookup().get(arg.toUpperCase());
 
                 //catch bad command
@@ -116,7 +119,8 @@ public interface TreeCommand extends CommandsAPICommand {
                 }
 
                 //on top of trying subcommand, run current command in case of independent functionality
-                onCommand(callerId, parameterValues, subCommand);
+                boolean cont = onCommand(callerId, parameterValues, subCommand);
+                if(!cont) return true;
 
                 //catch no perms for subcommand
                 if (!permissionCheckMethod.test(subCommand.permission())) {
@@ -125,7 +129,7 @@ public interface TreeCommand extends CommandsAPICommand {
 
                 //run subcommand
                 // todo: array copy bad
-                return subCommand.onCommand(callerId,permissionCheckMethod, messageMethod, Arrays.copyOfRange(args,i+1,args.length));
+                return subCommand.onCommand(callerId,permissionCheckMethod, messageMethod, args, i);
             }
 
             //otherwise, test and add the current arg to the list of parameters
@@ -143,5 +147,34 @@ public interface TreeCommand extends CommandsAPICommand {
             parameterValues.putIfAbsent(paramName, vals);
         }
         return onCommand(callerId, parameterValues, null);
+    }
+
+    default List<String> help(UUID callerId, Predicate<String> permissionCheckMethod) {
+        List<String> parents = new ArrayList<>();
+        CommandsAPICommand parent = parent();
+        while (parent!=null) {
+            parents.add(parent.name());
+            parent = parent.parent();
+        }
+
+        StringBuilder completeCommand = new StringBuilder();
+        for(int i = parents.size()-1; i > 0; i--) {
+            completeCommand.append(parents.get(i) + " ");
+        }
+
+        List<String> possibleResults = new ArrayList<>(2+getParameterLookup().size() + getCommandLookup().size());
+        possibleResults.add("Commands: ");
+        for (CommandsAPICommand command : getCommandLookup().values()) {
+            if (!permissionCheckMethod.test(command.permission())) continue;
+            possibleResults.add("  - /" + completeCommand + command.name() +
+                    "\n    " + command.description());
+        }
+        possibleResults.add("Parameters: ");
+        for (Map.Entry<String, CommandParameter> entry : getParameterLookup().entrySet()) {
+            if(!permissionCheckMethod.test(entry.getValue().permission())) continue;
+            possibleResults.add("  - " + entry.getKey() + CommandsAPI.parameterDelimiter +
+                    "\n    " + entry.getValue().description());
+        }
+        return possibleResults;
     }
 }

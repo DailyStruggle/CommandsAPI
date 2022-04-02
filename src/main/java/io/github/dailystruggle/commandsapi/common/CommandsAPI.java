@@ -2,6 +2,13 @@ package io.github.dailystruggle.commandsapi.common;
 
 import java.util.UUID;
 
+/**
+ *
+ * todo: command spam detection??
+ * todo: processing time metrics
+ * todo: run consumers on command processing
+ *          events?
+ */
 public class CommandsAPI {
     public static char parameterDelimiter = ':';
     public static char multiParameterDelimiter = ',';
@@ -11,10 +18,11 @@ public class CommandsAPI {
     public static final Factory commandFactory = new Factory();
     public static final Factory parameterFactory = new Factory();
 
-    public enum SERVER_TYPE{
+    public CommandsAPI() {
 
     }
 
-    public CommandsAPI() {
+    public void compute(long n) {
+        //todo: automatic command processing pipeline
     }
 }

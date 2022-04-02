@@ -10,12 +10,24 @@ public abstract class CommandParameter {
      * function to validate enum values, using the player id
      */
     protected BiFunction<UUID,String,Boolean> isRelevant;
+    private final String permission;
+    private final String description;
 
-    public CommandParameter(BiFunction<UUID, String, Boolean> isRelevant) {
+    public CommandParameter(String permission, String description, BiFunction<UUID, String, Boolean> isRelevant) {
         this.isRelevant = isRelevant;
+        this.permission = permission;
+        this.description = description;
     }
 
     public abstract Collection<String> values();
+
+    public String permission() {
+        return permission;
+    }
+
+    public String description() {
+        return description;
+    }
 
     /**
      * @param senderId id of command sender. The id is less specific than a player class.

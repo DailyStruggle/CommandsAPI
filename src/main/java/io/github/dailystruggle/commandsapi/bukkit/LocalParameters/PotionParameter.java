@@ -13,8 +13,8 @@ import java.util.stream.Collectors;
 
 public class PotionParameter extends BukkitParameter {
     List<String> allValues;
-    public PotionParameter(BiFunction<CommandSender, String, Boolean> isRelevant) {
-        super(isRelevant);
+    public PotionParameter(String permission, String description, BiFunction<CommandSender, String, Boolean> isRelevant) {
+        super(permission, description, isRelevant);
         allValues = Arrays.stream(PotionEffectType.values()).map(PotionEffectType::getName).collect(Collectors.toList());
     }
 

@@ -13,15 +13,15 @@ import java.util.function.Predicate;
 public interface CommandsAPICommand {
     String name();
     String permission();
+    String description();
+    CommandsAPICommand parent();
 
     /**
      * @param permissionCheckMethod a way to check command sender's permissions
      * @param args                  all additional arguments given with this command
      * @return list of possible values the player could be tabbing for
      */
-    default List<String> onTabComplete(UUID callerId, Predicate<String> permissionCheckMethod, String[] args) {
-        return null;
-    }
+    List<String> onTabComplete(UUID callerId, Predicate<String> permissionCheckMethod, String[] args, int i);
 
     /**
      * @param permissionCheckMethod a way to check command sender's permissions
@@ -29,14 +29,16 @@ public interface CommandsAPICommand {
      * @param args all additional arguments given with this command
      * @return success or failure of permission check
      */
-    boolean onCommand(UUID callerId, Predicate<String> permissionCheckMethod, Consumer<String> messageMethod, String[] args);
+    boolean onCommand(UUID callerId, Predicate<String> permissionCheckMethod, Consumer<String> messageMethod, String[] args, int i);
 
     /**
      * function to be run by each
      * @param callerId ID of caller
      * @param parameterValues parameters given for the current command
      * @param nextCommand next command in the chain, if any
-     * @return command success
+     * @return command success, determining whether this api attempts to run nextCommand
      */
     boolean onCommand(UUID callerId, Map<String,List<String>> parameterValues, CommandsAPICommand nextCommand);
+
+    List<String> help(UUID callerId, Predicate<String> permissionCheckMethod);
 }

@@ -6,7 +6,7 @@
 
     <groupId>io.github.dailystruggle</groupId>
     <artifactId>CommandsAPI</artifactId>
-    <version>1.0-ALPHA31</version>
+    <version>1.0-ALPHA33</version>
     <packaging>jar</packaging>
 
     <name>CommandsAPI</name>

@@ -9,8 +9,8 @@ import java.util.stream.Collectors;
 
 public class IntegerParameter extends BukkitParameter {
     List<String> allValues;
-    public IntegerParameter(BiFunction<CommandSender, String, Boolean> isRelevant, Vector<Integer> range) {
-        super(isRelevant);
+    public IntegerParameter(String permission, String description, BiFunction<CommandSender, String, Boolean> isRelevant, Vector<Integer> range) {
+        super(permission, description,isRelevant);
         allValues = new ArrayList<>();
         int maxSteps = 20;
         double span = range.lastElement() - range.firstElement();
@@ -20,8 +20,8 @@ public class IntegerParameter extends BukkitParameter {
         }
     }
 
-    public IntegerParameter(BiFunction<CommandSender, String, Boolean> isRelevant, Object... options) {
-        super(isRelevant);
+    public IntegerParameter(String permission, String description, BiFunction<CommandSender, String, Boolean> isRelevant, Object... options) {
+        super(permission, description, isRelevant);
         allValues = Arrays.stream(options).map(String::valueOf).collect(Collectors.toList());
     }
 

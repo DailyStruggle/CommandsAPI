@@ -12,8 +12,8 @@ import java.util.stream.Collectors;
 
 public class EnumParameter<T extends Enum<T>> extends BukkitParameter {
     List<String> allValues;
-    public EnumParameter(BiFunction<CommandSender, String, Boolean> isRelevant) {
-        super(isRelevant);
+    public EnumParameter(String permission, String description, BiFunction<CommandSender, String, Boolean> isRelevant) {
+        super(permission, description,isRelevant);
         Class<? extends Enum<T>> enumClass = (Class<? extends Enum<T>>) ((ParameterizedType) getClass()
                 .getGenericSuperclass()).getActualTypeArguments()[0];
         allValues = Arrays.stream(enumClass.getEnumConstants()).map(Enum::name).collect(Collectors.toList());
