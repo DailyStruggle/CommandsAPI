@@ -8,6 +8,7 @@ import org.bukkit.command.CommandSender;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
@@ -18,7 +19,7 @@ public class OfflinePlayerParameter extends BukkitParameter {
     }
 
     @Override
-    public Collection<String> values() {
-        return Arrays.stream(Bukkit.getOfflinePlayers()).map(OfflinePlayer::getName).collect(Collectors.toList());
+    public Set<String> values() {
+        return Arrays.stream(Bukkit.getOfflinePlayers()).map(OfflinePlayer::getName).collect(Collectors.toSet());
     }
 }

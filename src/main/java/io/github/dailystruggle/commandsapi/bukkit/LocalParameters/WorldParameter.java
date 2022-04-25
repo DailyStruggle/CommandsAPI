@@ -7,6 +7,7 @@ import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 
 import java.util.Collection;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
@@ -16,7 +17,7 @@ public class WorldParameter extends BukkitParameter {
     }
 
     @Override
-    public Collection<String> values() {
-        return Bukkit.getWorlds().stream().map(World::getName).collect(Collectors.toList());
+    public Set<String> values() {
+        return Bukkit.getWorlds().stream().map(World::getName).collect(Collectors.toSet());
     }
 }

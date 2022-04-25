@@ -8,18 +8,19 @@ import org.bukkit.potion.PotionEffectType;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 public class PotionParameter extends BukkitParameter {
-    List<String> allValues;
+    Set<String> allValues;
     public PotionParameter(String permission, String description, BiFunction<CommandSender, String, Boolean> isRelevant) {
         super(permission, description, isRelevant);
-        allValues = Arrays.stream(PotionEffectType.values()).map(PotionEffectType::getName).collect(Collectors.toList());
+        allValues = Arrays.stream(PotionEffectType.values()).map(PotionEffectType::getName).collect(Collectors.toSet());
     }
 
     @Override
-    public Collection<String> values() {
+    public Set<String> values() {
         return allValues;
     }
 }

@@ -15,6 +15,7 @@ public interface CommandsAPICommand {
     String permission();
     String description();
     CommandsAPICommand parent();
+    long avgTime();
 
     /**
      * @param permissionCheckMethod a way to check command sender's permissions

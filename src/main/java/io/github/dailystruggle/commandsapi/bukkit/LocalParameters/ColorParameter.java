@@ -4,20 +4,18 @@ package io.github.dailystruggle.commandsapi.bukkit.LocalParameters;
 import io.github.dailystruggle.commandsapi.bukkit.BukkitParameter;
 import org.bukkit.command.CommandSender;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 import java.util.function.BiFunction;
 
 public class ColorParameter extends BukkitParameter {
-    List<String> allValues;
+    Set<String> allValues;
     public ColorParameter(String permission, String description, BiFunction<CommandSender, String, Boolean> isRelevant) {
         super(permission, description,isRelevant);
-        allValues = Arrays.asList("FFFFFF","000000");
+        allValues = new HashSet<>(Arrays.asList("FFFFFF","000000"));
     }
 
     @Override
-    public Collection<String> values() {
+    public Set<String> values() {
         return allValues;
     }
 

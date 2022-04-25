@@ -1,10 +1,12 @@
 package io.github.dailystruggle.commandsapi.common.localCommands;
 
+import io.github.dailystruggle.commandsapi.common.CommandExecutor;
 import io.github.dailystruggle.commandsapi.common.CommandsAPI;
 import io.github.dailystruggle.commandsapi.common.CommandsAPICommand;
 import io.github.dailystruggle.commandsapi.common.CommandParameter;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.*;
 import java.util.stream.Collectors;
 
@@ -106,7 +108,7 @@ public interface TreeCommand extends CommandsAPICommand {
 
             String[] argSplit = arg.split(String.valueOf(CommandsAPI.parameterDelimiter));
             if (argSplit.length < 2) {//if it's a sub-command, process the current command and run the subcommand
-                if(arg.equalsIgnoreCase("help")) {
+                if(arg.equalsIgnoreCase("help") && !getCommandLookup().containsKey("HELP")) {
                     help(callerId,permissionCheckMethod).forEach(messageMethod);
                     return true;
                 }
@@ -119,17 +121,22 @@ public interface TreeCommand extends CommandsAPICommand {
                 }
 
                 //on top of trying subcommand, run current command in case of independent functionality
-                boolean cont = onCommand(callerId, parameterValues, subCommand);
-                if(!cont) return true;
+
+                CompletableFuture<Boolean> cont = new CompletableFuture<>();
+                new CommandExecutor(this,callerId,parameterValues,subCommand, cont);
 
                 //catch no perms for subcommand
                 if (!permissionCheckMethod.test(subCommand.permission())) {
                     return false;
                 }
 
-                //run subcommand
-                // todo: array copy bad
-                return subCommand.onCommand(callerId,permissionCheckMethod, messageMethod, args, i);
+                //run subcommand after this command
+                int finalI = i;
+                cont.whenCompleteAsync((aBoolean, throwable) -> {
+                    if(aBoolean)
+                        subCommand.onCommand(callerId,permissionCheckMethod, messageMethod, args, finalI);
+                });
+                return true;
             }
 
             //otherwise, test and add the current arg to the list of parameters
@@ -141,10 +148,21 @@ public interface TreeCommand extends CommandsAPICommand {
             }
 
             String val = argSplit[1];
-            List<String> vals = Arrays.stream(val.split(String.valueOf(CommandsAPI.multiParameterDelimiter))).collect(Collectors.toList());
 
-            //todo: validate value??
-            parameterValues.putIfAbsent(paramName, vals);
+            //filter according to actual possible inputs
+            CommandParameter parameter = getParameterLookup().get(arg);
+
+            //split args
+            //filter according to parameter limiter to guard possible answers
+            //collect into list for command experience
+            List<String> vals =
+                    Arrays.stream(val.split(String.valueOf(CommandsAPI.multiParameterDelimiter)))
+                            .filter(s -> parameter.isRelevant.apply(callerId,s))
+                            .collect(Collectors.toList());
+
+            //only add if there are valid values
+            if(vals.size() > 0)
+                parameterValues.putIfAbsent(paramName, vals);
         }
         return onCommand(callerId, parameterValues, null);
     }
@@ -159,7 +177,7 @@ public interface TreeCommand extends CommandsAPICommand {
 
         StringBuilder completeCommand = new StringBuilder();
         for(int i = parents.size()-1; i > 0; i--) {
-            completeCommand.append(parents.get(i) + " ");
+            completeCommand.append(parents.get(i)).append(" ");
         }
 
         List<String> possibleResults = new ArrayList<>(2+getParameterLookup().size() + getCommandLookup().size());

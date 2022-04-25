@@ -9,10 +9,10 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 public class FloatParameter extends BukkitParameter {
-    List<String> allValues;
+    Set<String> allValues;
     public FloatParameter(String permission, String description, BiFunction<CommandSender, String, Boolean> isRelevant, Vector<Double> range) {
         super(permission,description,isRelevant);
-        allValues = new ArrayList<>();
+        allValues = new HashSet<>();
         int maxSteps = (range.size()>2) ? range.get(1).intValue() : 20;
         double span = range.lastElement() - range.firstElement();
         double step = span/maxSteps;
@@ -25,11 +25,11 @@ public class FloatParameter extends BukkitParameter {
     public FloatParameter(String permission, String description, BiFunction<CommandSender, String, Boolean> isRelevant, Object... options) {
         super(permission, description,isRelevant);
         DecimalFormat decimalFormat = new DecimalFormat("###.##");
-        allValues = Arrays.stream(options).map(decimalFormat::format).collect(Collectors.toList());
+        allValues = Arrays.stream(options).map(decimalFormat::format).collect(Collectors.toSet());
     }
 
     @Override
-    public Collection<String> values() {
+    public Set<String> values() {
         return allValues;
     }
 }

@@ -8,14 +8,14 @@ import java.util.*;
 import java.util.function.BiFunction;
 
 public class BooleanParameter extends BukkitParameter {
-    List<String> allValues;
+    Set<String> allValues;
     public BooleanParameter(String permission, String description, BiFunction<CommandSender, String, Boolean> isRelevant) {
         super(permission, description,isRelevant);
-        allValues = Arrays.asList("true","false");
+        allValues = new HashSet<>(Arrays.asList("true","false"));
     }
 
     @Override
-    public Collection<String> values() {
+    public Set<String> values() {
         return allValues;
     }
 }

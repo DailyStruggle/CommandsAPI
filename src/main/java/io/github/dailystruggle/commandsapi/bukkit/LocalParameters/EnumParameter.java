@@ -7,20 +7,21 @@ import java.lang.reflect.ParameterizedType;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 public class EnumParameter<T extends Enum<T>> extends BukkitParameter {
-    List<String> allValues;
+    Set<String> allValues;
     public EnumParameter(String permission, String description, BiFunction<CommandSender, String, Boolean> isRelevant) {
         super(permission, description,isRelevant);
         Class<? extends Enum<T>> enumClass = (Class<? extends Enum<T>>) ((ParameterizedType) getClass()
                 .getGenericSuperclass()).getActualTypeArguments()[0];
-        allValues = Arrays.stream(enumClass.getEnumConstants()).map(Enum::name).collect(Collectors.toList());
+        allValues = Arrays.stream(enumClass.getEnumConstants()).map(Enum::name).collect(Collectors.toSet());
     }
 
     @Override
-    public Collection<String> values() {
+    public Set<String> values() {
         return allValues;
     }
 }

@@ -18,6 +18,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class BukkitTreeCommand extends BukkitCommand implements TreeCommand {
+    protected long avgTime = 0;
+
     protected final Map<String, CommandParameter> parameterLookup = new ConcurrentHashMap<>();
 
     private final CommandsAPICommand parent;
@@ -72,6 +74,7 @@ public abstract class BukkitTreeCommand extends BukkitCommand implements TreeCom
     public boolean onCommand(UUID callerId,
                              Map<String,List<String>> parameterValues,
                              CommandsAPICommand nextCommand){
+        long start = System.nanoTime();
         CommandSender commandSender;
         if(callerId.equals(CommandsAPI.serverId)) {
             commandSender = Bukkit.getConsoleSender();
@@ -80,7 +83,13 @@ public abstract class BukkitTreeCommand extends BukkitCommand implements TreeCom
             commandSender = Bukkit.getPlayer(callerId);
             if(commandSender == null) return false;
         }
-        return onCommand(commandSender,parameterValues,nextCommand);
+        boolean res = onCommand(commandSender,parameterValues,nextCommand);
+        long stop = System.nanoTime();
+        if(stop<start) start = -(Long.MAX_VALUE-start);
+        long diff = stop - start;
+        if(avgTime == 0) avgTime = diff;
+        else avgTime = ((avgTime*7)/8) + (diff/8);
+        return res;
     }
 
     public abstract boolean onCommand(CommandSender sender,
@@ -95,5 +104,10 @@ public abstract class BukkitTreeCommand extends BukkitCommand implements TreeCom
     @Override
     public Map<String, CommandsAPICommand> getCommandLookup() {
         return commandLookup;
+    }
+
+    @Override
+    public long avgTime() {
+        return avgTime;
     }
 }
