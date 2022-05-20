@@ -42,7 +42,7 @@ public class CommandsAPI {
     public static long execute(long availableTime) {
         if(commandPipeline.size()==0) return 0;
 
-        long start = System.currentTimeMillis();
+        long start = System.nanoTime();
 
         long dt;
         CommandExecutor commandExecutor;
@@ -55,7 +55,7 @@ public class CommandsAPI {
             commandExecutor.execute();
 
 
-            long t = System.currentTimeMillis();
+            long t = System.nanoTime();
             if(t<start) start = -(Long.MAX_VALUE-start); //overflow correction
             dt = t-start;
         } while (commandPipeline.size()>0 && dt+avgTime< availableTime);

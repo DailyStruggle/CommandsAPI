@@ -1,5 +1,8 @@
 package io.github.dailystruggle.commandsapi.common;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,15 +25,24 @@ public interface CommandsAPICommand {
      * @param args                  all additional arguments given with this command
      * @return list of possible values the player could be tabbing for
      */
-    List<String> onTabComplete(UUID callerId, Predicate<String> permissionCheckMethod, String[] args, int i);
+    List<String> onTabComplete(@NotNull UUID callerId,
+                               @NotNull Predicate<String> permissionCheckMethod,
+                               @NotNull String[] args,
+                               int i,
+                               @NotNull Map<String,CommandParameter> tempParameters);
 
     /**
      * @param permissionCheckMethod a way to check command sender's permissions
      * @param messageMethod a way to send the command sender a message
-     * @param args all additional arguments given with this command
+     * @param args all arguments given with this command
      * @return success or failure of permission check
      */
-    boolean onCommand(UUID callerId, Predicate<String> permissionCheckMethod, Consumer<String> messageMethod, String[] args, int i);
+    boolean onCommand(@NotNull UUID callerId,
+                      @NotNull Predicate<String> permissionCheckMethod,
+                      @NotNull Consumer<String> messageMethod,
+                      @NotNull String[] args,
+                      int i,
+                      @Nullable Map<String,CommandParameter> tempParameters);
 
     /**
      * function to be run by each

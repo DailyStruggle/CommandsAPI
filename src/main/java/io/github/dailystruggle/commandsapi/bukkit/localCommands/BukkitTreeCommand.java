@@ -55,7 +55,7 @@ public abstract class BukkitTreeCommand extends BukkitCommand implements TreeCom
             return false;
         }
 
-        return onCommand(senderId,sender::hasPermission,sender::sendMessage,args, 0);
+        return onCommand(senderId,sender::hasPermission,sender::sendMessage,args);
     }
 
     @Override
@@ -67,7 +67,7 @@ public abstract class BukkitTreeCommand extends BukkitCommand implements TreeCom
         else if(sender.getName().equals(Bukkit.getConsoleSender().getName())) senderId = CommandsAPI.serverId;
         else return null;
 
-        return onTabComplete(senderId,sender::hasPermission,args, 0);
+        return onTabComplete(senderId,sender::hasPermission,args);
     }
 
     @Override

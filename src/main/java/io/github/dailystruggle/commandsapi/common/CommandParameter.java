@@ -1,12 +1,14 @@
 package io.github.dailystruggle.commandsapi.common;
 
-import java.util.Collection;
-import java.util.Set;
-import java.util.UUID;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 public abstract class CommandParameter {
+    Map<String,Map<String,CommandParameter>> subParamMap = new ConcurrentHashMap<>();
     /**
      * function to validate enum values, using the player id
      */
@@ -36,5 +38,9 @@ public abstract class CommandParameter {
      */
     public Set<String> relevantValues(UUID senderId) {
         return values().stream().filter(s -> this.isRelevant.apply(senderId,s)).collect(Collectors.toSet());
+    }
+
+    public Map<String,CommandParameter> subParams(String parameter) {
+        return subParamMap.get(parameter);
     }
 }

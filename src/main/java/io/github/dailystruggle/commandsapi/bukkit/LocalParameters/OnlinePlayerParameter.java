@@ -5,6 +5,7 @@ import io.github.dailystruggle.commandsapi.bukkit.BukkitParameter;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 import java.util.Collection;
 import java.util.Set;
@@ -18,6 +19,6 @@ public class OnlinePlayerParameter extends BukkitParameter {
 
     @Override
     public Set<String> values() {
-        return Bukkit.getOnlinePlayers().stream().map(OfflinePlayer::getName).collect(Collectors.toSet());
+        return Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toSet());
     }
 }

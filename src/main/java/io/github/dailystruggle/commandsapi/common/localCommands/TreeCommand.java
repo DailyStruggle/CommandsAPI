@@ -4,6 +4,8 @@ import io.github.dailystruggle.commandsapi.common.CommandExecutor;
 import io.github.dailystruggle.commandsapi.common.CommandsAPI;
 import io.github.dailystruggle.commandsapi.common.CommandsAPICommand;
 import io.github.dailystruggle.commandsapi.common.CommandParameter;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -27,17 +29,45 @@ public interface TreeCommand extends CommandsAPICommand {
     Map<String, CommandParameter> getParameterLookup();
     Map<String, CommandsAPICommand> getCommandLookup();
 
-    default List<String> onTabComplete(UUID callerId, Predicate<String> permissionCheckMethod, String[] args, int i) {
+    @NotNull
+    default List<String> onTabComplete(@NotNull UUID callerId,
+                                       @NotNull Predicate<String> permissionCheckMethod,
+                                       @NotNull String[] args) {
+        return onTabComplete(callerId,permissionCheckMethod,args,0,null);
+    }
+
+    @NotNull
+    default List<String> onTabComplete(@NotNull UUID callerId,
+                                       @NotNull Predicate<String> permissionCheckMethod,
+                                       @NotNull String[] args,
+                                       int i,
+                                       @Nullable Map<String,CommandParameter> tempParameters) {
+        if(tempParameters == null) tempParameters = new HashMap<>();
         Set<String> parameterValues = new HashSet<>();
+        List<String> possibleResults = new ArrayList<>();
+        Map<String, CommandParameter> parameterLookup = getParameterLookup();
+
         while (i<args.length && args[i].contains(String.valueOf(CommandsAPI.parameterDelimiter))) {
             if(i<args.length-1) {
                 String[] arr = args[i].split(String.valueOf(CommandsAPI.parameterDelimiter));
                 parameterValues.add(arr[0]);
+
+                //check for sub-parameters
+                CommandParameter parameter = parameterLookup.get(arr[0]);
+                if(parameter == null) tempParameters.get(arr[0]);
+                if(parameter == null) continue;
+                if(arr.length > 1) {
+                    String[] subParameters = arr[1].split(String.valueOf(CommandsAPI.multiParameterDelimiter));
+                    for(String subParamName : subParameters) {
+                        Map<String, CommandParameter> parameterMap = parameter.subParams(subParamName);
+                        if(parameterMap == null) continue;
+                        tempParameters.putAll(parameterMap);
+                    }
+                }
             }
             ++i;
         }
 
-        List<String> possibleResults = new ArrayList<>();
         if(i==args.length) {//last value condition
             if(i>0) { //last value in a chain
                 i--;
@@ -45,27 +75,50 @@ public interface TreeCommand extends CommandsAPICommand {
                 String arg = delimiterIdx > 0 ? args[i].substring(0, delimiterIdx) : args[i];
 
                 if (delimiterIdx < 0) {
-                    for (Map.Entry<String, CommandParameter> entry : getParameterLookup().entrySet()) {
+                    for (Map.Entry<String, CommandParameter> entry : parameterLookup.entrySet()) {
+                        if(parameterValues.contains(entry.getKey())) continue; //already used
+                        possibleResults.add(entry.getKey() + CommandsAPI.parameterDelimiter);
+                    }
+                    for (Map.Entry<String, CommandParameter> entry : tempParameters.entrySet()) {
                         if(parameterValues.contains(entry.getKey())) continue;
                         possibleResults.add(entry.getKey() + CommandsAPI.parameterDelimiter);
                     }
                     for (CommandsAPICommand command : getCommandLookup().values()) {
                         if (permissionCheckMethod.test(command.permission())) possibleResults.add(command.name());
                     }
-                } else if (getParameterLookup().containsKey(arg)) {
+                } else if (parameterLookup.containsKey(arg)) {
                     if(parameterValues.contains(arg)) return new ArrayList<>();
                     String val = args[i].substring(delimiterIdx+1);
                     Set<String> vals = Arrays.stream(val.split(String.valueOf(CommandsAPI.multiParameterDelimiter))).collect(Collectors.toSet());
-                    List<String> relevantValues = new ArrayList<>(getParameterLookup().get(arg).relevantValues(callerId));
+                    CommandParameter parameter = parameterLookup.get(arg);
+                    List<String> relevantValues = new ArrayList<>(parameter.relevantValues(callerId));
                     String front = (args[i].contains(String.valueOf(CommandsAPI.multiParameterDelimiter)))
                             ?  args[i].substring(0,args[i].lastIndexOf(CommandsAPI.multiParameterDelimiter))+CommandsAPI.multiParameterDelimiter
                             : arg+CommandsAPI.parameterDelimiter;
                     relevantValues = relevantValues.stream().filter(s -> !vals.contains(s)).map(s -> front + s).collect(Collectors.toList());
                     possibleResults.addAll(relevantValues);
+                    Map<String, CommandParameter> subParams = parameter.subParams(val);
+                    if(subParams != null) tempParameters.putAll(subParams);
+                } else if (tempParameters.containsKey(arg)) {
+                    if(parameterValues.contains(arg)) return new ArrayList<>();
+                    String val = args[i].substring(delimiterIdx+1);
+                    Set<String> vals = Arrays.stream(val.split(String.valueOf(CommandsAPI.multiParameterDelimiter))).collect(Collectors.toSet());
+                    CommandParameter parameter = tempParameters.get(arg);
+                    List<String> relevantValues = new ArrayList<>(parameter.relevantValues(callerId));
+                    String front = (args[i].contains(String.valueOf(CommandsAPI.multiParameterDelimiter)))
+                            ?  args[i].substring(0,args[i].lastIndexOf(CommandsAPI.multiParameterDelimiter))+CommandsAPI.multiParameterDelimiter
+                            : arg+CommandsAPI.parameterDelimiter;
+                    relevantValues = relevantValues.stream().filter(s -> !vals.contains(s)).map(s -> front + s).collect(Collectors.toList());
+                    possibleResults.addAll(relevantValues);
+                    Map<String, CommandParameter> subParams = parameter.subParams(val);
+                    if(subParams != null) tempParameters.putAll(subParams);
                 }
             }
             else { //only value
-                for (Map.Entry<String, CommandParameter> entry : getParameterLookup().entrySet()) {
+                for (Map.Entry<String, CommandParameter> entry : parameterLookup.entrySet()) {
+                    possibleResults.add(entry.getKey() + CommandsAPI.parameterDelimiter);
+                }
+                for (Map.Entry<String, CommandParameter> entry : tempParameters.entrySet()) {
                     possibleResults.add(entry.getKey() + CommandsAPI.parameterDelimiter);
                 }
                 for (CommandsAPICommand command : getCommandLookup().values()) {
@@ -73,14 +126,18 @@ public interface TreeCommand extends CommandsAPICommand {
                 }
             }
         }
-        else {
+        else { //not last value
             CommandsAPICommand nextCommand = getCommandLookup().get(args[i].toUpperCase());
             if(nextCommand != null) {
-                return nextCommand.onTabComplete(callerId,permissionCheckMethod, args,i);
+                return nextCommand.onTabComplete(callerId,permissionCheckMethod, args,i, tempParameters);
             }
             else {
-                for (Map.Entry<String, CommandParameter> entry : getParameterLookup().entrySet()) {
-                    if(parameterValues.contains(entry.getKey())) continue;
+                for (Map.Entry<String, CommandParameter> entry : parameterLookup.entrySet()) {
+                    if(parameterValues.contains(entry.getKey())) continue; //already used prior
+                    possibleResults.add(entry.getKey() + CommandsAPI.parameterDelimiter);
+                }
+                for (Map.Entry<String, CommandParameter> entry : tempParameters.entrySet()) {
+                    if(parameterValues.contains(entry.getKey())) continue; //already used
                     possibleResults.add(entry.getKey() + CommandsAPI.parameterDelimiter);
                 }
                 for (CommandsAPICommand command : getCommandLookup().values()) {
@@ -94,7 +151,20 @@ public interface TreeCommand extends CommandsAPICommand {
         else return possibleResults;
     }
 
-    default boolean onCommand(UUID callerId, Predicate<String> permissionCheckMethod, Consumer<String> messageMethod, String[] args, int i) {
+    default boolean onCommand(@NotNull UUID callerId,
+                              @NotNull Predicate<String> permissionCheckMethod,
+                              @NotNull Consumer<String> messageMethod,
+                              @NotNull String[] args) {
+        return onCommand(callerId,permissionCheckMethod,messageMethod,args,0,null);
+    }
+
+    default boolean onCommand(@NotNull UUID callerId,
+                              @NotNull Predicate<String> permissionCheckMethod,
+                              @NotNull Consumer<String> messageMethod,
+                              @NotNull String[] args,
+                              int i,
+                              @Nullable Map<String,CommandParameter> tempParameters) {
+        if(tempParameters == null) tempParameters = new HashMap<>();
         if(!permissionCheckMethod.test(permission())) return false;
         Map<String,List<String>> parameterValues = new HashMap<>();
         for (; i < args.length; i++) {
@@ -130,18 +200,22 @@ public interface TreeCommand extends CommandsAPICommand {
                     return false;
                 }
 
-                //run subcommand after this command
+                //run subcommand after this command is done
                 int finalI = i;
+                Map<String, CommandParameter> finalTempParameters = tempParameters;
                 cont.whenCompleteAsync((aBoolean, throwable) -> {
                     if(aBoolean)
-                        subCommand.onCommand(callerId,permissionCheckMethod, messageMethod, args, finalI);
+                        subCommand.onCommand(callerId,permissionCheckMethod, messageMethod, args, finalI, finalTempParameters);
                 });
                 return true;
             }
 
             //otherwise, test and add the current arg to the list of parameters
+            Map<String, CommandParameter> parameterLookup = getParameterLookup();
             String paramName = argSplit[0].toLowerCase();
-            CommandParameter currentParameter = getParameterLookup().get(paramName);
+            CommandParameter currentParameter = parameterLookup.containsKey(paramName)
+                    ? parameterLookup.get(paramName)
+                    : tempParameters.get(paramName);
             if (currentParameter == null) {
                 messageMethod.accept("bad parameter:" + argSplit[0]);
                 continue;
@@ -149,15 +223,12 @@ public interface TreeCommand extends CommandsAPICommand {
 
             String val = argSplit[1];
 
-            //filter according to actual possible inputs
-            CommandParameter parameter = getParameterLookup().get(arg);
-
-            //split args
+            //split args by specific delimiter
             //filter according to parameter limiter to guard possible answers
             //collect into list for command experience
             List<String> vals =
                     Arrays.stream(val.split(String.valueOf(CommandsAPI.multiParameterDelimiter)))
-                            .filter(s -> parameter.isRelevant.apply(callerId,s))
+                            .filter(s -> currentParameter.isRelevant.apply(callerId,s))
                             .collect(Collectors.toList());
 
             //only add if there are valid values

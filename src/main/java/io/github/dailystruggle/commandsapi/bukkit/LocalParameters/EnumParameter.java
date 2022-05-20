@@ -13,10 +13,8 @@ import java.util.stream.Collectors;
 
 public class EnumParameter<T extends Enum<T>> extends BukkitParameter {
     Set<String> allValues;
-    public EnumParameter(String permission, String description, BiFunction<CommandSender, String, Boolean> isRelevant) {
+    public EnumParameter(String permission, String description, BiFunction<CommandSender, String, Boolean> isRelevant, Class<T> enumClass) {
         super(permission, description,isRelevant);
-        Class<? extends Enum<T>> enumClass = (Class<? extends Enum<T>>) ((ParameterizedType) getClass()
-                .getGenericSuperclass()).getActualTypeArguments()[0];
         allValues = Arrays.stream(enumClass.getEnumConstants()).map(Enum::name).collect(Collectors.toSet());
     }
 
