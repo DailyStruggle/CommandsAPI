@@ -228,7 +228,11 @@ public interface TreeCommand extends CommandsAPICommand {
             //collect into list for command experience
             List<String> vals =
                     Arrays.stream(val.split(String.valueOf(CommandsAPI.multiParameterDelimiter)))
-                            .filter(s -> currentParameter.isRelevant.apply(callerId,s))
+                            .filter(s -> {
+                                Boolean pass = currentParameter.isRelevant.apply(callerId,s);
+                                if(!pass) msgBadParameter(callerId,paramName,s);
+                                return pass;
+                            })
                             .collect(Collectors.toList());
 
             //only add if there are valid values

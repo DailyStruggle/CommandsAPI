@@ -18,6 +18,7 @@ public interface CommandsAPICommand {
     String permission();
     String description();
     CommandsAPICommand parent();
+    void msgBadParameter(UUID callerId, String parameterName, String parameterValue);
     long avgTime();
 
     /**
