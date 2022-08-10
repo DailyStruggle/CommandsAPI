@@ -28,7 +28,7 @@ public class CommandsAPI {
     }
 
     /**
-     * execute for up to 50ms, or one game tick
+     * run for up to 50ms, or one game tick
      * @return remaining commands in the pipeline
      */
     public static long execute() {
@@ -52,7 +52,7 @@ public class CommandsAPI {
             commandExecutor = commandPipeline.poll();
             avgTime = Objects.requireNonNull(commandExecutor).command().avgTime();
 
-            commandExecutor.execute();
+            commandExecutor.run();
 
 
             long t = System.nanoTime();

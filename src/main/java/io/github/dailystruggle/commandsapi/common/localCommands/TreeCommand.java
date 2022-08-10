@@ -1,15 +1,16 @@
 package io.github.dailystruggle.commandsapi.common.localCommands;
 
 import io.github.dailystruggle.commandsapi.common.CommandExecutor;
+import io.github.dailystruggle.commandsapi.common.CommandParameter;
 import io.github.dailystruggle.commandsapi.common.CommandsAPI;
 import io.github.dailystruggle.commandsapi.common.CommandsAPICommand;
-import io.github.dailystruggle.commandsapi.common.CommandParameter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.*;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 
@@ -129,7 +130,7 @@ public interface TreeCommand extends CommandsAPICommand {
         else { //not last value
             CommandsAPICommand nextCommand = getCommandLookup().get(args[i].toUpperCase());
             if(nextCommand != null) {
-                return nextCommand.onTabComplete(callerId,permissionCheckMethod, args,i, tempParameters);
+                return nextCommand.onTabComplete(callerId,permissionCheckMethod, args,i+1, tempParameters);
             }
             else {
                 for (Map.Entry<String, CommandParameter> entry : parameterLookup.entrySet()) {
@@ -193,7 +194,8 @@ public interface TreeCommand extends CommandsAPICommand {
                 //on top of trying subcommand, run current command in case of independent functionality
 
                 CompletableFuture<Boolean> cont = new CompletableFuture<>();
-                new CommandExecutor(this,callerId,parameterValues,subCommand, cont);
+                CommandExecutor commandExecutor = new CommandExecutor(this, callerId, parameterValues, subCommand, cont);
+                CommandsAPI.commandPipeline.add(commandExecutor);
 
                 //catch no perms for subcommand
                 if (!permissionCheckMethod.test(subCommand.permission())) {
@@ -201,7 +203,7 @@ public interface TreeCommand extends CommandsAPICommand {
                 }
 
                 //run subcommand after this command is done
-                int finalI = i;
+                int finalI = i+1;
                 Map<String, CommandParameter> finalTempParameters = tempParameters;
                 cont.whenCompleteAsync((aBoolean, throwable) -> {
                     if(aBoolean)
@@ -239,7 +241,10 @@ public interface TreeCommand extends CommandsAPICommand {
             if(vals.size() > 0)
                 parameterValues.putIfAbsent(paramName, vals);
         }
-        return onCommand(callerId, parameterValues, null);
+
+        boolean res = onCommand(callerId, parameterValues, null);
+
+        return res;
     }
 
     default List<String> help(UUID callerId, Predicate<String> permissionCheckMethod) {
@@ -256,7 +261,9 @@ public interface TreeCommand extends CommandsAPICommand {
         }
 
         List<String> possibleResults = new ArrayList<>(2+getParameterLookup().size() + getCommandLookup().size());
-        possibleResults.add("Commands: ");
+        possibleResults.add("Command: " + completeCommand +
+                "\n    " + description());
+        possibleResults.add("Subcommands: ");
         for (CommandsAPICommand command : getCommandLookup().values()) {
             if (!permissionCheckMethod.test(command.permission())) continue;
             possibleResults.add("  - /" + completeCommand + command.name() +

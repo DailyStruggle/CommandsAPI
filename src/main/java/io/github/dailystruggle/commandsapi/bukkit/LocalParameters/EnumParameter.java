@@ -3,10 +3,7 @@ package io.github.dailystruggle.commandsapi.bukkit.LocalParameters;
 import io.github.dailystruggle.commandsapi.bukkit.BukkitParameter;
 import org.bukkit.command.CommandSender;
 
-import java.lang.reflect.ParameterizedType;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;

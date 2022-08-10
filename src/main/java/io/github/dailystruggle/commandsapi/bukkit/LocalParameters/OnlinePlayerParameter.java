@@ -3,11 +3,9 @@ package io.github.dailystruggle.commandsapi.bukkit.LocalParameters;
 
 import io.github.dailystruggle.commandsapi.bukkit.BukkitParameter;
 import org.bukkit.Bukkit;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import java.util.Collection;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;

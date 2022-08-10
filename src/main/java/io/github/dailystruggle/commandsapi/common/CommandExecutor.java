@@ -9,8 +9,8 @@ public record CommandExecutor(CommandsAPICommand command,
                               UUID callerId,
                               Map<String, List<String>> parameterValues,
                               CommandsAPICommand nextCommand,
-                              CompletableFuture<Boolean> result) {
-    public void execute() {
+                              CompletableFuture<Boolean> result) implements Runnable {
+    public void run() {
         result.complete(command.onCommand(callerId,parameterValues,nextCommand));
     }
 }

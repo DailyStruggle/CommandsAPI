@@ -6,7 +6,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 
-import java.util.Collection;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
