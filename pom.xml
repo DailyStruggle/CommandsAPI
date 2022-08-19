@@ -6,7 +6,7 @@
 
     <groupId>io.github.dailystruggle</groupId>
     <artifactId>CommandsAPI</artifactId>
-    <version>1.0-ALPHA57</version>
+    <version>1.0-ALPHA63</version>
     <packaging>jar</packaging>
 
     <name>CommandsAPI</name>
@@ -21,8 +21,6 @@
     <developers>
         <developer>
             <id>leaf26</id>
-            <name>John Goldsmith</name>
-            <email>lxgoldsmith@gmail.com</email>
             <organization>LeafCraft</organization>
             <organizationUrl>https://github.com/DailyStruggle</organizationUrl>
             <roles>

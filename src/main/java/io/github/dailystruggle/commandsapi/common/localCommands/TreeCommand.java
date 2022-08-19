@@ -55,14 +55,15 @@ public interface TreeCommand extends CommandsAPICommand {
 
                 //check for sub-parameters
                 CommandParameter parameter = parameterLookup.get(arr[0]);
-                if(parameter == null) tempParameters.get(arr[0]);
-                if(parameter == null) continue;
-                if(arr.length > 1) {
-                    String[] subParameters = arr[1].split(String.valueOf(CommandsAPI.multiParameterDelimiter));
-                    for(String subParamName : subParameters) {
-                        Map<String, CommandParameter> parameterMap = parameter.subParams(subParamName);
-                        if(parameterMap == null) continue;
-                        tempParameters.putAll(parameterMap);
+                if(parameter == null) parameter = tempParameters.get(arr[0]);
+                if(parameter != null) {
+                    if (arr.length > 1) {
+                        String[] subParameters = arr[1].split(String.valueOf(CommandsAPI.multiParameterDelimiter));
+                        for (String subParamName : subParameters) {
+                            Map<String, CommandParameter> parameterMap = parameter.subParams(subParamName);
+                            if (parameterMap == null) continue;
+                            tempParameters.putAll(parameterMap);
+                        }
                     }
                 }
             }
@@ -77,12 +78,22 @@ public interface TreeCommand extends CommandsAPICommand {
 
                 if (delimiterIdx < 0) {
                     for (Map.Entry<String, CommandParameter> entry : parameterLookup.entrySet()) {
-                        if(parameterValues.contains(entry.getKey())) continue; //already used
-                        possibleResults.add(entry.getKey() + CommandsAPI.parameterDelimiter);
+                        String key = entry.getKey();
+                        CommandParameter value = entry.getValue();
+                        if(key == null || value == null) continue;
+                        String permission = value.permission();
+                        if(parameterValues.contains(key)) continue;
+                        if(permission==null || permissionCheckMethod.test(permission))
+                            possibleResults.add(key + CommandsAPI.parameterDelimiter);
                     }
                     for (Map.Entry<String, CommandParameter> entry : tempParameters.entrySet()) {
-                        if(parameterValues.contains(entry.getKey())) continue;
-                        possibleResults.add(entry.getKey() + CommandsAPI.parameterDelimiter);
+                        String key = entry.getKey();
+                        CommandParameter value = entry.getValue();
+                        if(key == null || value == null) continue;
+                        String permission = value.permission();
+                        if(parameterValues.contains(key)) continue;
+                        if(permission==null || permissionCheckMethod.test(permission))
+                            possibleResults.add(key + CommandsAPI.parameterDelimiter);
                     }
                     for (CommandsAPICommand command : getCommandLookup().values()) {
                         if (permissionCheckMethod.test(command.permission())) possibleResults.add(command.name());
@@ -98,8 +109,10 @@ public interface TreeCommand extends CommandsAPICommand {
                             : arg+CommandsAPI.parameterDelimiter;
                     relevantValues = relevantValues.stream().filter(s -> !vals.contains(s)).map(s -> front + s).collect(Collectors.toList());
                     possibleResults.addAll(relevantValues);
-                    Map<String, CommandParameter> subParams = parameter.subParams(val);
-                    if(subParams != null) tempParameters.putAll(subParams);
+                    for(String v : vals) {
+                        Map<String, CommandParameter> subParams = parameter.subParams(v);
+                        if (subParams != null) tempParameters.putAll(subParams);
+                    }
                 } else if (tempParameters.containsKey(arg)) {
                     if(parameterValues.contains(arg)) return new ArrayList<>();
                     String val = args[i].substring(delimiterIdx+1);
@@ -111,19 +124,32 @@ public interface TreeCommand extends CommandsAPICommand {
                             : arg+CommandsAPI.parameterDelimiter;
                     relevantValues = relevantValues.stream().filter(s -> !vals.contains(s)).map(s -> front + s).collect(Collectors.toList());
                     possibleResults.addAll(relevantValues);
-                    Map<String, CommandParameter> subParams = parameter.subParams(val);
-                    if(subParams != null) tempParameters.putAll(subParams);
+                    for(String v : vals) {
+                        Map<String, CommandParameter> subParams = parameter.subParams(v);
+                        if (subParams != null) tempParameters.putAll(subParams);
+                    }
                 }
             }
             else { //only value
                 for (Map.Entry<String, CommandParameter> entry : parameterLookup.entrySet()) {
-                    possibleResults.add(entry.getKey() + CommandsAPI.parameterDelimiter);
+                    String key = entry.getKey();
+                    CommandParameter value = entry.getValue();
+                    if(key == null || value == null) continue;
+                    String permission = value.permission();
+                    if(permission==null || permissionCheckMethod.test(permission))
+                        possibleResults.add(key + CommandsAPI.parameterDelimiter);
                 }
                 for (Map.Entry<String, CommandParameter> entry : tempParameters.entrySet()) {
-                    possibleResults.add(entry.getKey() + CommandsAPI.parameterDelimiter);
+                    String key = entry.getKey();
+                    CommandParameter value = entry.getValue();
+                    if(key == null || value == null) continue;
+                    String permission = value.permission();
+                    if(permission==null || permissionCheckMethod.test(permission))
+                        possibleResults.add(key + CommandsAPI.parameterDelimiter);
                 }
                 for (CommandsAPICommand command : getCommandLookup().values()) {
-                    if (permissionCheckMethod.test(command.permission())) possibleResults.add(command.name());
+                    String permission = command.permission();
+                    if (permission == null || permissionCheckMethod.test(permission)) possibleResults.add(command.name());
                 }
             }
         }
@@ -134,15 +160,26 @@ public interface TreeCommand extends CommandsAPICommand {
             }
             else {
                 for (Map.Entry<String, CommandParameter> entry : parameterLookup.entrySet()) {
-                    if(parameterValues.contains(entry.getKey())) continue; //already used prior
-                    possibleResults.add(entry.getKey() + CommandsAPI.parameterDelimiter);
+                    String key = entry.getKey();
+                    CommandParameter value = entry.getValue();
+                    if(key == null || value == null) continue;
+                    String permission = value.permission();
+                    if(parameterValues.contains(key)) continue; //already used prior
+                    if(permission==null || permissionCheckMethod.test(permission))
+                        possibleResults.add(key + CommandsAPI.parameterDelimiter);
                 }
                 for (Map.Entry<String, CommandParameter> entry : tempParameters.entrySet()) {
-                    if(parameterValues.contains(entry.getKey())) continue; //already used
-                    possibleResults.add(entry.getKey() + CommandsAPI.parameterDelimiter);
+                    String key = entry.getKey();
+                    CommandParameter value = entry.getValue();
+                    if(key == null || value == null) continue;
+                    String permission = value.permission();
+                    if(parameterValues.contains(key)) continue; //already used prior
+                    if(permission==null || permissionCheckMethod.test(permission))
+                        possibleResults.add(key + CommandsAPI.parameterDelimiter);
                 }
                 for (CommandsAPICommand command : getCommandLookup().values()) {
-                    if (permissionCheckMethod.test(command.permission())) possibleResults.add(command.name());
+                    String permission = command.permission();
+                    if (permission==null || permissionCheckMethod.test(permission)) possibleResults.add(command.name());
                 }
             }
         }

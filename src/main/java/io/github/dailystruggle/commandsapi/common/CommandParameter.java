@@ -8,7 +8,7 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 public abstract class CommandParameter {
-    Map<String,Map<String,CommandParameter>> subParamMap = new ConcurrentHashMap<>();
+    public Map<String,Map<String,CommandParameter>> subParamMap = new ConcurrentHashMap<>();
     /**
      * function to validate enum values, using the player id
      */
