@@ -47,7 +47,7 @@ public class Factory {
         if(type == null) return null;
         Constructor<?>[] constructors = type.getConstructors();
         Optional<Constructor<?>> longestConstructorOptional = Arrays.stream(constructors).max(Comparator.comparingInt(Constructor::getParameterCount));
-        if(longestConstructorOptional.isEmpty()) return null;
+        if(!longestConstructorOptional.isPresent()) return null;
         Constructor<?> longestConstructor = longestConstructorOptional.get();
         return longestConstructor.getParameterTypes();
     }

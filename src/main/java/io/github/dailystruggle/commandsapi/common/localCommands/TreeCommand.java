@@ -256,7 +256,7 @@ public interface TreeCommand extends CommandsAPICommand {
                     ? parameterLookup.get(paramName)
                     : tempParameters.get(paramName);
             if (currentParameter == null) {
-                messageMethod.accept("bad parameter:" + argSplit[0]);
+                msgBadParameter(callerId,paramName,"");
                 continue;
             }
 
@@ -277,11 +277,37 @@ public interface TreeCommand extends CommandsAPICommand {
             //only add if there are valid values
             if(vals.size() > 0)
                 parameterValues.putIfAbsent(paramName, vals);
+            for(String s : vals) {
+                Map<String, CommandParameter> subParameterMap = currentParameter.subParams(s);
+                if(subParameterMap == null || subParameterMap.size()==0) continue;
+                for(int j = i+1; j < args.length; j++) {
+                    String arg2 = args[j];
+                    String[] argSplit2 = arg2.split(String.valueOf(CommandsAPI.parameterDelimiter));
+                    if (argSplit2.length < 2) {
+                        break;
+                    }
+                    String paramName2 = argSplit2[0].toLowerCase();
+                    CommandParameter currentParameter2 = subParameterMap.get(paramName2);
+                    if(currentParameter2 == null) continue;
+
+                    String val2 = argSplit2[1];
+                    List<String> vals2 =
+                            Arrays.stream(val2.split(String.valueOf(CommandsAPI.multiParameterDelimiter)))
+                                    .filter(s2 -> {
+                                        Boolean pass = currentParameter.isRelevant.apply(callerId,s2);
+                                        if(!pass) msgBadParameter(callerId,paramName,s2);
+                                        return pass;
+                                    })
+                                    .collect(Collectors.toList());
+                    if(vals2.size()>0) {
+                        tempParameters.putIfAbsent(paramName2,currentParameter2);
+                        parameterValues.putIfAbsent(paramName2,vals2);
+                    }
+                }
+            }
         }
 
-        boolean res = onCommand(callerId, parameterValues, null);
-
-        return res;
+        return onCommand(callerId, parameterValues, null);
     }
 
     default List<String> help(UUID callerId, Predicate<String> permissionCheckMethod) {
