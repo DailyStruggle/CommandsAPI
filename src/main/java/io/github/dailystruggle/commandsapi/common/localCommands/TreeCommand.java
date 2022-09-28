@@ -294,7 +294,7 @@ public interface TreeCommand extends CommandsAPICommand {
                     List<String> vals2 =
                             Arrays.stream(val2.split(String.valueOf(CommandsAPI.multiParameterDelimiter)))
                                     .filter(s2 -> {
-                                        Boolean pass = currentParameter.isRelevant.apply(callerId,s2);
+                                        Boolean pass = currentParameter2.isRelevant.apply(callerId,s2);
                                         if(!pass) msgBadParameter(callerId,paramName,s2);
                                         return pass;
                                     })
