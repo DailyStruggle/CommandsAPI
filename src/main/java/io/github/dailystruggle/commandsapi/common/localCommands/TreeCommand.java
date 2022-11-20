@@ -210,8 +210,8 @@ public interface TreeCommand extends CommandsAPICommand {
 
             //catch delimiter with no value
             if (arg.endsWith(String.valueOf(CommandsAPI.parameterDelimiter))) {
-                messageMethod.accept("no value given for " + arg);
-                continue;
+                msgBadParameter(callerId,arg,"");
+                return true;
             }
 
             String[] argSplit = arg.split(String.valueOf(CommandsAPI.parameterDelimiter));
@@ -225,6 +225,7 @@ public interface TreeCommand extends CommandsAPICommand {
 
                 //catch bad command
                 if (subCommand == null) {
+                    messageMethod.accept("invalid command - " + arg);
                     return true;
                 }
 
@@ -257,7 +258,7 @@ public interface TreeCommand extends CommandsAPICommand {
                     : tempParameters.get(paramName);
             if (currentParameter == null) {
                 msgBadParameter(callerId,paramName,"");
-                continue;
+                return true;
             }
 
             String val = argSplit[1];
