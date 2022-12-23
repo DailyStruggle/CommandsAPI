@@ -281,6 +281,7 @@ public interface TreeCommand extends CommandsAPICommand {
             for(String s : vals) {
                 Map<String, CommandParameter> subParameterMap = currentParameter.subParams(s);
                 if(subParameterMap == null || subParameterMap.size()==0) continue;
+                tempParameters.putAll(subParameterMap);
                 for(int j = i+1; j < args.length; j++) {
                     String arg2 = args[j];
                     String[] argSplit2 = arg2.split(String.valueOf(CommandsAPI.parameterDelimiter));
@@ -323,21 +324,30 @@ public interface TreeCommand extends CommandsAPICommand {
         for(int i = parents.size()-1; i > 0; i--) {
             completeCommand.append(parents.get(i)).append(" ");
         }
+        completeCommand.append(name()).append(" ");
 
-        List<String> possibleResults = new ArrayList<>(2+getParameterLookup().size() + getCommandLookup().size());
+        Map<String, CommandsAPICommand> commandLookup = getCommandLookup();
+        Map<String, CommandParameter> parameterLookup = getParameterLookup();
+        List<String> possibleResults = new ArrayList<>(2+ parameterLookup.size() + commandLookup.size());
         possibleResults.add("Command: " + completeCommand +
                 "\n    " + description());
-        possibleResults.add("Subcommands: ");
-        for (CommandsAPICommand command : getCommandLookup().values()) {
-            if (!permissionCheckMethod.test(command.permission())) continue;
-            possibleResults.add("  - /" + completeCommand + command.name() +
-                    "\n    " + command.description());
+
+        if(commandLookup.size()>0) {
+            possibleResults.add("Subcommands: ");
+            for (CommandsAPICommand command : commandLookup.values()) {
+                if (!permissionCheckMethod.test(command.permission())) continue;
+                possibleResults.add("  - /" + completeCommand + command.name() +
+                        "\n    " + command.description());
+            }
         }
-        possibleResults.add("Parameters: ");
-        for (Map.Entry<String, CommandParameter> entry : getParameterLookup().entrySet()) {
-            if(!permissionCheckMethod.test(entry.getValue().permission())) continue;
-            possibleResults.add("  - " + entry.getKey() + CommandsAPI.parameterDelimiter +
-                    "\n    " + entry.getValue().description());
+
+        if(parameterLookup.size()>0) {
+            possibleResults.add("Parameters: ");
+            for (Map.Entry<String, CommandParameter> entry : parameterLookup.entrySet()) {
+                if (!permissionCheckMethod.test(entry.getValue().permission())) continue;
+                possibleResults.add("  - " + entry.getKey() + CommandsAPI.parameterDelimiter +
+                        "\n    " + entry.getValue().description());
+            }
         }
         return possibleResults;
     }
