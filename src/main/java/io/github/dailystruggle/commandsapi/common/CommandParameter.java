@@ -13,6 +13,7 @@ public abstract class CommandParameter {
      * function to validate enum values, using the player id
      */
     public BiFunction<UUID,String,Boolean> isRelevant;
+    public int priority = 0;
     private final String permission;
     private final String description;
 

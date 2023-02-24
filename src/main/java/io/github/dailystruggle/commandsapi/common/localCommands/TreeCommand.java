@@ -205,6 +205,7 @@ public interface TreeCommand extends CommandsAPICommand {
         if(tempParameters == null) tempParameters = new HashMap<>();
         if(!permissionCheckMethod.test(permission())) return false;
         Map<String,List<String>> parameterValues = new HashMap<>();
+        Map<String, CommandParameter> parameterLookup = getParameterLookup();
         for (; i < args.length; i++) {
             String arg = args[i];
 
@@ -225,8 +226,37 @@ public interface TreeCommand extends CommandsAPICommand {
 
                 //catch bad command
                 if (subCommand == null) {
-                    messageMethod.accept("invalid command - " + arg);
-                    return true;
+                    List<Map.Entry<String,CommandParameter>> parameters = new ArrayList<>(parameterLookup.size());
+                    String lowerCase = arg.toLowerCase();
+                    for(Map.Entry<String,CommandParameter> parameterEntry : parameterLookup.entrySet()) {
+                        if(!permissionCheckMethod.test(parameterEntry.getValue().permission())) continue;
+                        if(!parameterEntry.getValue().isRelevant.apply(callerId, lowerCase)) continue;
+                        parameters.add(parameterEntry);
+                    }
+
+                    for(Map.Entry<String,CommandParameter> parameterEntry : tempParameters.entrySet()) {
+                        if(!permissionCheckMethod.test(parameterEntry.getValue().permission())) continue;
+                        if(!parameterEntry.getValue().isRelevant.apply(callerId, lowerCase)) continue;
+                        parameters.add(parameterEntry);
+                    }
+
+                    if(parameters.size()==0) {
+                        messageMethod.accept("invalid command - " + arg);
+                        return true;
+                    }
+
+                    parameters.sort(Comparator.comparingInt(o -> o.getValue().priority));
+                    Map.Entry<String, CommandParameter> parameterEntry = parameters.get(0);
+                    List<String> list = parameterValues.get(parameterEntry.getKey());
+                    if(list == null) list = new ArrayList<>();
+                    list.add(lowerCase);
+                    parameterValues.put(parameterEntry.getKey().toLowerCase(),list);
+
+                    CommandParameter currentParameter = parameterEntry.getValue();
+                    Map<String, CommandParameter> subParameterMap = currentParameter.subParams(lowerCase);
+                    if(subParameterMap == null || subParameterMap.size()==0) continue;
+                    tempParameters.putAll(subParameterMap);
+                    continue;
                 }
 
                 //on top of trying subcommand, run current command in case of independent functionality
@@ -251,7 +281,6 @@ public interface TreeCommand extends CommandsAPICommand {
             }
 
             //otherwise, test and add the current arg to the list of parameters
-            Map<String, CommandParameter> parameterLookup = getParameterLookup();
             String paramName = argSplit[0].toLowerCase();
             CommandParameter currentParameter = parameterLookup.containsKey(paramName)
                     ? parameterLookup.get(paramName)
