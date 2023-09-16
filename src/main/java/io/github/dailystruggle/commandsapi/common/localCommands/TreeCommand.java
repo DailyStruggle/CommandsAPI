@@ -189,21 +189,21 @@ public interface TreeCommand extends CommandsAPICommand {
         else return possibleResults;
     }
 
-    default boolean onCommand(@NotNull UUID callerId,
+    default CompletableFuture<Boolean> onCommand(@NotNull UUID callerId,
                               @NotNull Predicate<String> permissionCheckMethod,
                               @NotNull Consumer<String> messageMethod,
                               @NotNull String[] args) {
         return onCommand(callerId,permissionCheckMethod,messageMethod,args,0,null);
     }
 
-    default boolean onCommand(@NotNull UUID callerId,
-                              @NotNull Predicate<String> permissionCheckMethod,
-                              @NotNull Consumer<String> messageMethod,
-                              @NotNull String[] args,
-                              int i,
-                              @Nullable Map<String,CommandParameter> tempParameters) {
+    default CompletableFuture<Boolean> onCommand(@NotNull UUID callerId,
+                                                 @NotNull Predicate<String> permissionCheckMethod,
+                                                 @NotNull Consumer<String> messageMethod,
+                                                 @NotNull String[] args,
+                                                 int i,
+                                                 @Nullable Map<String,CommandParameter> tempParameters) {
         if(tempParameters == null) tempParameters = new HashMap<>();
-        if(!permissionCheckMethod.test(permission())) return false;
+        if(!permissionCheckMethod.test(permission())) return CompletableFuture.completedFuture(false);
         Map<String,List<String>> parameterValues = new HashMap<>();
         Map<String, CommandParameter> parameterLookup = getParameterLookup();
         for (; i < args.length; i++) {
@@ -212,14 +212,14 @@ public interface TreeCommand extends CommandsAPICommand {
             //catch delimiter with no value
             if (arg.endsWith(String.valueOf(CommandsAPI.parameterDelimiter))) {
                 msgBadParameter(callerId,arg,"");
-                return true;
+                return CompletableFuture.completedFuture(false);
             }
 
             String[] argSplit = arg.split(String.valueOf(CommandsAPI.parameterDelimiter));
             if (argSplit.length < 2) {//if it's a sub-command, process the current command and run the subcommand
                 if(arg.equalsIgnoreCase("help") && !getCommandLookup().containsKey("HELP")) {
                     help(callerId,permissionCheckMethod).forEach(messageMethod);
-                    return true;
+                    return CompletableFuture.completedFuture(false);
                 }
 
                 CommandsAPICommand subCommand = getCommandLookup().get(arg.toUpperCase());
@@ -240,9 +240,9 @@ public interface TreeCommand extends CommandsAPICommand {
                         parameters.add(parameterEntry);
                     }
 
-                    if(parameters.size()==0) {
+                    if(parameters.isEmpty()) {
                         messageMethod.accept("invalid command - " + arg);
-                        return true;
+                        return CompletableFuture.completedFuture(false);
                     }
 
                     parameters.sort(Comparator.comparingInt(o -> o.getValue().priority));
@@ -254,7 +254,7 @@ public interface TreeCommand extends CommandsAPICommand {
 
                     CommandParameter currentParameter = parameterEntry.getValue();
                     Map<String, CommandParameter> subParameterMap = currentParameter.subParams(lowerCase);
-                    if(subParameterMap == null || subParameterMap.size()==0) continue;
+                    if(subParameterMap == null || subParameterMap.isEmpty()) continue;
                     tempParameters.putAll(subParameterMap);
                     continue;
                 }
@@ -267,17 +267,20 @@ public interface TreeCommand extends CommandsAPICommand {
 
                 //catch no perms for subcommand
                 if (!permissionCheckMethod.test(subCommand.permission())) {
-                    return false;
+                    return CompletableFuture.completedFuture(false);
                 }
 
                 //run subcommand after this command is done
                 int finalI = i+1;
                 Map<String, CommandParameter> finalTempParameters = tempParameters;
+                CompletableFuture<Boolean> res = new CompletableFuture<>();
                 cont.whenCompleteAsync((aBoolean, throwable) -> {
-                    if(aBoolean)
-                        subCommand.onCommand(callerId,permissionCheckMethod, messageMethod, args, finalI, finalTempParameters);
+                    if(aBoolean) {
+                        CompletableFuture<Boolean> booleanCompletableFuture = subCommand.onCommand(callerId, permissionCheckMethod, messageMethod, args, finalI, finalTempParameters);
+                        booleanCompletableFuture.whenComplete((aBoolean1, throwable1) -> res.complete(aBoolean1));
+                    }
                 });
-                return true;
+                return res;
             }
 
             //otherwise, test and add the current arg to the list of parameters
@@ -285,9 +288,9 @@ public interface TreeCommand extends CommandsAPICommand {
             CommandParameter currentParameter = parameterLookup.containsKey(paramName)
                     ? parameterLookup.get(paramName)
                     : tempParameters.get(paramName);
-            if (currentParameter == null) {
+            if (currentParameter == null || !permissionCheckMethod.test(currentParameter.permission())) {
                 msgBadParameter(callerId,paramName,"");
-                return true;
+                return CompletableFuture.completedFuture(false);
             }
 
             String val = argSplit[1];
@@ -305,11 +308,11 @@ public interface TreeCommand extends CommandsAPICommand {
                             .collect(Collectors.toList());
 
             //only add if there are valid values
-            if(vals.size() > 0)
+            if(!vals.isEmpty())
                 parameterValues.putIfAbsent(paramName, vals);
             for(String s : vals) {
                 Map<String, CommandParameter> subParameterMap = currentParameter.subParams(s);
-                if(subParameterMap == null || subParameterMap.size()==0) continue;
+                if(subParameterMap == null || subParameterMap.isEmpty()) continue;
                 tempParameters.putAll(subParameterMap);
                 for(int j = i+1; j < args.length; j++) {
                     String arg2 = args[j];
@@ -320,17 +323,18 @@ public interface TreeCommand extends CommandsAPICommand {
                     String paramName2 = argSplit2[0].toLowerCase();
                     CommandParameter currentParameter2 = subParameterMap.get(paramName2);
                     if(currentParameter2 == null) continue;
+                    if(!permissionCheckMethod.test(currentParameter2.permission())) continue;
 
                     String val2 = argSplit2[1];
                     List<String> vals2 =
                             Arrays.stream(val2.split(String.valueOf(CommandsAPI.multiParameterDelimiter)))
                                     .filter(s2 -> {
-                                        Boolean pass = currentParameter2.isRelevant.apply(callerId,s2);
+                                        boolean pass = currentParameter2.isRelevant.apply(callerId,s2);
                                         if(!pass) msgBadParameter(callerId,paramName,s2);
                                         return pass;
                                     })
                                     .collect(Collectors.toList());
-                    if(vals2.size()>0) {
+                    if(!vals2.isEmpty()) {
                         tempParameters.putIfAbsent(paramName2,currentParameter2);
                         parameterValues.putIfAbsent(paramName2,vals2);
                     }
@@ -338,7 +342,7 @@ public interface TreeCommand extends CommandsAPICommand {
             }
         }
 
-        return onCommand(callerId, parameterValues, null);
+        return CompletableFuture.completedFuture(onCommand(callerId, parameterValues, null));
     }
 
     default List<String> help(UUID callerId, Predicate<String> permissionCheckMethod) {

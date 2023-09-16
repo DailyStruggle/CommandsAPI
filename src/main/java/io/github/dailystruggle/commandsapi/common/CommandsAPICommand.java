@@ -1,11 +1,13 @@
 package io.github.dailystruggle.commandsapi.common;
 
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -33,16 +35,16 @@ public interface CommandsAPICommand {
 
     /**
      * @param permissionCheckMethod a way to check command sender's permissions
-     * @param messageMethod a way to send the command sender a message
-     * @param args all arguments given with this command
+     * @param messageMethod         a way to send the command sender a message
+     * @param args                  all arguments given with this command
      * @return success or failure of permission check
      */
-    boolean onCommand(@NotNull UUID callerId,
-                      @NotNull Predicate<String> permissionCheckMethod,
-                      @NotNull Consumer<String> messageMethod,
-                      @NotNull String[] args,
-                      int i,
-                      @Nullable Map<String,CommandParameter> tempParameters);
+    CompletableFuture<Boolean> onCommand(@NotNull UUID callerId,
+                                         @NotNull Predicate<String> permissionCheckMethod,
+                                         @NotNull Consumer<String> messageMethod,
+                                         @NotNull String[] args,
+                                         int i,
+                                         @Nullable Map<String,CommandParameter> tempParameters);
 
     /**
      * function to be run by each

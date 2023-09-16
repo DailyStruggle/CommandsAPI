@@ -16,6 +16,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class BukkitTreeCommand extends BukkitCommand implements TreeCommand {
@@ -62,7 +63,9 @@ public abstract class BukkitTreeCommand extends BukkitCommand implements TreeCom
             return false;
         }
 
-        return onCommand(senderId,sender::hasPermission,sender::sendMessage,args);
+        CompletableFuture<Boolean> future = onCommand(senderId, sender::hasPermission, sender::sendMessage, args);
+
+        return true;
     }
 
     @Override
@@ -90,11 +93,9 @@ public abstract class BukkitTreeCommand extends BukkitCommand implements TreeCom
             if(commandSender == null) return false;
         }
 
-        boolean res = onCommand(commandSender,parameterValues,nextCommand);
+        //        long stop = System.nanoTime();
 
-        long stop = System.nanoTime();
-
-        return res;
+        return onCommand(commandSender,parameterValues,nextCommand);
     }
 
     public abstract boolean onCommand(CommandSender sender,
