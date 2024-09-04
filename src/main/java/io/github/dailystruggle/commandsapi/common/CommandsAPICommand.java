@@ -23,20 +23,30 @@ public interface CommandsAPICommand {
     long avgTime();
 
     /**
+     * onTabComplete - recursive tab completion
+     *
+     * @param callerId ID of caller
      * @param permissionCheckMethod a way to check command sender's permissions
      * @param args                  all additional arguments given with this command
+     * @param i                     current index in args, in recursive calls
+     * @param tempParameters        stored parameters, for recursive calls
      * @return list of possible values the player could be tabbing for
      */
     List<String> onTabComplete(@NotNull UUID callerId,
                                @NotNull Predicate<String> permissionCheckMethod,
                                @NotNull String[] args,
                                int i,
-                               @NotNull Map<String,CommandParameter> tempParameters);
+                               @Nullable Map<String,CommandParameter> tempParameters);
 
     /**
+     * onCommand - recursive command execution
+     *
+     * @param callerId ID of caller
      * @param permissionCheckMethod a way to check command sender's permissions
      * @param messageMethod         a way to send the command sender a message
      * @param args                  all arguments given with this command
+     * @param i                     current index in args, in recursive calls
+     * @param tempParameters        stored parameters, for recursive calls
      * @return success or failure of permission check
      */
     CompletableFuture<Boolean> onCommand(@NotNull UUID callerId,
@@ -47,7 +57,8 @@ public interface CommandsAPICommand {
                                          @Nullable Map<String,CommandParameter> tempParameters);
 
     /**
-     * function to be run by each
+     * function to be run by each inheritor object
+     *
      * @param callerId ID of caller
      * @param parameterValues parameters given for the current command
      * @param nextCommand next command in the chain, if any
