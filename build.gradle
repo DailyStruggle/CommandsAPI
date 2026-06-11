@@ -33,6 +33,10 @@ repositories {
         url = 'https://oss.sonatype.org/content/groups/public/'
     }
     maven {
+        name = 'aikar'
+        url = 'https://repo.aikar.co/nexus/content/groups/aikar/'
+    }
+    maven {
         name = 'minecraft-libraries'
         url = 'https://libraries.minecraft.net/'
     }
