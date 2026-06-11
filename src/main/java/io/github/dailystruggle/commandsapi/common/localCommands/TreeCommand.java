@@ -11,7 +11,10 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 /**
@@ -29,6 +32,14 @@ public interface TreeCommand extends CommandsAPICommand {
 
     Map<String, CommandParameter> getParameterLookup();
     Map<String, CommandsAPICommand> getCommandLookup();
+
+    default void msgInvalidCommand(UUID callerId, String argument) {
+        //no-op
+    }
+
+    default void msgInvalidCommand(UUID callerId, String argument, Consumer<String> messageMethod) {
+        msgInvalidCommand(callerId, argument);
+    }
 
     @NotNull
     default List<String> onTabComplete(@NotNull UUID callerId,
@@ -48,9 +59,9 @@ public interface TreeCommand extends CommandsAPICommand {
         List<String> possibleResults = new ArrayList<>();
         Map<String, CommandParameter> parameterLookup = getParameterLookup();
 
-        while (i<args.length && args[i].contains(String.valueOf(CommandsAPI.parameterDelimiter))) {
+        while (i<args.length && args[i].indexOf('=') >= 0) {
             if(i<args.length-1) {
-                String[] arr = args[i].split(String.valueOf(CommandsAPI.parameterDelimiter));
+                String[] arr = splitOnParamDelimiter(args[i]);
                 parameterValues.add(arr[0]);
 
                 //check for sub-parameters
@@ -58,7 +69,7 @@ public interface TreeCommand extends CommandsAPICommand {
                 if(parameter == null) parameter = tempParameters.get(arr[0]);
                 if(parameter != null) {
                     if (arr.length > 1) {
-                        String[] subParameters = arr[1].split(String.valueOf(CommandsAPI.multiParameterDelimiter));
+                        String[] subParameters = arr[1].split(",");
                         for (String subParamName : subParameters) {
                             Map<String, CommandParameter> parameterMap = parameter.subParams(subParamName);
                             if (parameterMap == null) continue;
@@ -73,7 +84,7 @@ public interface TreeCommand extends CommandsAPICommand {
         if(i==args.length) {//last value condition
             if(i>0) { //last value in a chain
                 i--;
-                int delimiterIdx = args[i].indexOf(CommandsAPI.parameterDelimiter);
+                int delimiterIdx = args[i].indexOf('=');
                 String arg = delimiterIdx > 0 ? args[i].substring(0, delimiterIdx) : args[i];
 
                 if (delimiterIdx < 0) {
@@ -101,12 +112,12 @@ public interface TreeCommand extends CommandsAPICommand {
                 } else if (parameterLookup.containsKey(arg)) {
                     if(parameterValues.contains(arg)) return new ArrayList<>();
                     String val = args[i].substring(delimiterIdx+1);
-                    Set<String> vals = Arrays.stream(val.split(String.valueOf(CommandsAPI.multiParameterDelimiter))).collect(Collectors.toSet());
+                    Set<String> vals = Arrays.stream(val.split(",")).collect(Collectors.toSet());
                     CommandParameter parameter = parameterLookup.get(arg);
                     List<String> relevantValues = new ArrayList<>(parameter.relevantValues(callerId));
-                    String front = (args[i].contains(String.valueOf(CommandsAPI.multiParameterDelimiter)))
-                            ?  args[i].substring(0,args[i].lastIndexOf(CommandsAPI.multiParameterDelimiter))+CommandsAPI.multiParameterDelimiter
-                            : arg+CommandsAPI.parameterDelimiter;
+                    String front = (args[i].indexOf(',') >= 0)
+                            ?  args[i].substring(0,args[i].lastIndexOf(',')) + ","
+                            : arg + "=";
                     relevantValues = relevantValues.stream().filter(s -> !vals.contains(s)).map(s -> front + s).collect(Collectors.toList());
                     possibleResults.addAll(relevantValues);
                     for(String v : vals) {
@@ -116,12 +127,12 @@ public interface TreeCommand extends CommandsAPICommand {
                 } else if (tempParameters.containsKey(arg)) {
                     if(parameterValues.contains(arg)) return new ArrayList<>();
                     String val = args[i].substring(delimiterIdx+1);
-                    Set<String> vals = Arrays.stream(val.split(String.valueOf(CommandsAPI.multiParameterDelimiter))).collect(Collectors.toSet());
+                    Set<String> vals = Arrays.stream(val.split(",")).collect(Collectors.toSet());
                     CommandParameter parameter = tempParameters.get(arg);
                     List<String> relevantValues = new ArrayList<>(parameter.relevantValues(callerId));
-                    String front = (args[i].contains(String.valueOf(CommandsAPI.multiParameterDelimiter)))
-                            ?  args[i].substring(0,args[i].lastIndexOf(CommandsAPI.multiParameterDelimiter))+CommandsAPI.multiParameterDelimiter
-                            : arg+CommandsAPI.parameterDelimiter;
+                    String front = (args[i].indexOf(',') >= 0)
+                            ?  args[i].substring(0,args[i].lastIndexOf(',')) + ","
+                            : arg + "=";
                     relevantValues = relevantValues.stream().filter(s -> !vals.contains(s)).map(s -> front + s).collect(Collectors.toList());
                     possibleResults.addAll(relevantValues);
                     for(String v : vals) {
@@ -210,12 +221,12 @@ public interface TreeCommand extends CommandsAPICommand {
             String arg = args[i];
 
             //catch delimiter with no value
-            if (arg.endsWith(String.valueOf(CommandsAPI.parameterDelimiter))) {
-                msgBadParameter(callerId,arg,"");
+            if (arg.endsWith("=")) {
+                msgBadParameter(callerId,arg.substring(0,arg.length()-1),"",messageMethod);
                 return CompletableFuture.completedFuture(false);
             }
 
-            String[] argSplit = arg.split(String.valueOf(CommandsAPI.parameterDelimiter));
+            String[] argSplit = splitOnParamDelimiter(arg);
             if (argSplit.length < 2) {//if it's a sub-command, process the current command and run the subcommand
                 if(arg.equalsIgnoreCase("help") && !getCommandLookup().containsKey("HELP")) {
                     help(callerId,permissionCheckMethod).forEach(messageMethod);
@@ -226,43 +237,14 @@ public interface TreeCommand extends CommandsAPICommand {
 
                 //catch bad command
                 if (subCommand == null) {
-                    List<Map.Entry<String,CommandParameter>> parameters = new ArrayList<>(parameterLookup.size());
-                    String lowerCase = arg.toLowerCase();
-                    for(Map.Entry<String,CommandParameter> parameterEntry : parameterLookup.entrySet()) {
-                        if(!permissionCheckMethod.test(parameterEntry.getValue().permission())) continue;
-                        if(!parameterEntry.getValue().isRelevant.apply(callerId, lowerCase)) continue;
-                        parameters.add(parameterEntry);
-                    }
-
-                    for(Map.Entry<String,CommandParameter> parameterEntry : tempParameters.entrySet()) {
-                        if(!permissionCheckMethod.test(parameterEntry.getValue().permission())) continue;
-                        if(!parameterEntry.getValue().isRelevant.apply(callerId, lowerCase)) continue;
-                        parameters.add(parameterEntry);
-                    }
-
-                    if(parameters.isEmpty()) {
-                        messageMethod.accept("invalid command - " + arg);
-                        return CompletableFuture.completedFuture(false);
-                    }
-
-                    parameters.sort(Comparator.comparingInt(o -> o.getValue().priority));
-                    Map.Entry<String, CommandParameter> parameterEntry = parameters.get(0);
-                    List<String> list = parameterValues.get(parameterEntry.getKey());
-                    if(list == null) list = new ArrayList<>();
-                    list.add(lowerCase);
-                    parameterValues.put(parameterEntry.getKey().toLowerCase(),list);
-
-                    CommandParameter currentParameter = parameterEntry.getValue();
-                    Map<String, CommandParameter> subParameterMap = currentParameter.subParams(lowerCase);
-                    if(subParameterMap == null || subParameterMap.isEmpty()) continue;
-                    tempParameters.putAll(subParameterMap);
-                    continue;
+                    msgInvalidCommand(callerId, arg, messageMethod);
+                    return CompletableFuture.completedFuture(false);
                 }
 
                 //on top of trying subcommand, run current command in case of independent functionality
 
                 CompletableFuture<Boolean> cont = new CompletableFuture<>();
-                CommandExecutor commandExecutor = new CommandExecutor(this, callerId, parameterValues, subCommand, cont);
+                CommandExecutor commandExecutor = new CommandExecutor(this, callerId, parameterValues, subCommand, messageMethod, cont);
                 CommandsAPI.commandPipeline.add(commandExecutor);
 
                 //catch no perms for subcommand
@@ -274,7 +256,15 @@ public interface TreeCommand extends CommandsAPICommand {
                 int finalI = i+1;
                 Map<String, CommandParameter> finalTempParameters = tempParameters;
                 CompletableFuture<Boolean> res = new CompletableFuture<>();
-                cont.whenCompleteAsync((aBoolean, throwable) -> {
+                // Use `whenComplete` (not `whenCompleteAsync`) so the
+                // sub-command continuation runs on the thread that
+                // completes `cont` — i.e. the platform-driven
+                // `CommandsAPI.execute()` drain thread (REQ-API-ARCH-006).
+                // The async variant would dispatch onto
+                // `ForkJoinPool.commonPool`, adding an extra thread hop
+                // and a Folia thread-context hazard on the menu-redeem
+                // path (`/rtp menu token:<...>` -> MenuRedeemSubcommand).
+                cont.whenComplete((aBoolean, throwable) -> {
                     if(aBoolean) {
                         CompletableFuture<Boolean> booleanCompletableFuture = subCommand.onCommand(callerId, permissionCheckMethod, messageMethod, args, finalI, finalTempParameters);
                         booleanCompletableFuture.whenComplete((aBoolean1, throwable1) -> res.complete(aBoolean1));
@@ -289,20 +279,24 @@ public interface TreeCommand extends CommandsAPICommand {
                     ? parameterLookup.get(paramName)
                     : tempParameters.get(paramName);
             if (currentParameter == null || !permissionCheckMethod.test(currentParameter.permission())) {
-                msgBadParameter(callerId,paramName,"");
+                msgBadParameter(callerId,argSplit[0],argSplit[1],messageMethod);
                 return CompletableFuture.completedFuture(false);
             }
 
             String val = argSplit[1];
 
             //split args by specific delimiter
+            //expand reg:<pattern> tokens against the parameter's caller-relevant value set
             //filter according to parameter limiter to guard possible answers
             //collect into list for command experience
+            CommandParameter currentParameterFinal = currentParameter;
             List<String> vals =
-                    Arrays.stream(val.split(String.valueOf(CommandsAPI.multiParameterDelimiter)))
+                    Arrays.stream(val.split(","))
+                            .flatMap(token -> expandRegexToken(token, currentParameterFinal, callerId))
+                            .distinct()
                             .filter(s -> {
-                                Boolean pass = currentParameter.isRelevant.apply(callerId,s);
-                                if(!pass) msgBadParameter(callerId,paramName,s);
+                                Boolean pass = currentParameterFinal.isRelevant.apply(callerId,s);
+                                if(!pass) msgBadParameter(callerId,paramName,s,messageMethod);
                                 return pass;
                             })
                             .collect(Collectors.toList());
@@ -316,7 +310,7 @@ public interface TreeCommand extends CommandsAPICommand {
                 tempParameters.putAll(subParameterMap);
                 for(int j = i+1; j < args.length; j++) {
                     String arg2 = args[j];
-                    String[] argSplit2 = arg2.split(String.valueOf(CommandsAPI.parameterDelimiter));
+                    String[] argSplit2 = splitOnParamDelimiter(arg2);
                     if (argSplit2.length < 2) {
                         break;
                     }
@@ -326,11 +320,14 @@ public interface TreeCommand extends CommandsAPICommand {
                     if(!permissionCheckMethod.test(currentParameter2.permission())) continue;
 
                     String val2 = argSplit2[1];
+                    CommandParameter currentParameter2Final = currentParameter2;
                     List<String> vals2 =
-                            Arrays.stream(val2.split(String.valueOf(CommandsAPI.multiParameterDelimiter)))
+                            Arrays.stream(val2.split(","))
+                                    .flatMap(token -> expandRegexToken(token, currentParameter2Final, callerId))
+                                    .distinct()
                                     .filter(s2 -> {
-                                        boolean pass = currentParameter2.isRelevant.apply(callerId,s2);
-                                        if(!pass) msgBadParameter(callerId,paramName,s2);
+                                        boolean pass = currentParameter2Final.isRelevant.apply(callerId,s2);
+                                        if(!pass) msgBadParameter(callerId,paramName2,s2,messageMethod);
                                         return pass;
                                     })
                                     .collect(Collectors.toList());
@@ -342,7 +339,53 @@ public interface TreeCommand extends CommandsAPICommand {
             }
         }
 
-        return CompletableFuture.completedFuture(onCommand(callerId, parameterValues, null));
+        return CompletableFuture.completedFuture(onCommand(callerId, parameterValues, null, messageMethod));
+    }
+
+    /**
+     * Splits a token on the first parameter delimiter ({@code =}), limit 2.
+     * Single named grammar primitive retained after the {@code :} -> {@code =}
+     * migration; the previous sibling helpers {@code containsParamDelimiter} and
+     * {@code indexOfParamDelimiter} were inlined as {@code indexOf('=')} calls
+     * because they wrapped a one-liner around a now-fixed delimiter.
+     */
+    static String[] splitOnParamDelimiter(String token) {
+        int idx = token.indexOf('=');
+        if (idx < 0) return new String[]{token};
+        return new String[]{token.substring(0, idx), token.substring(idx + 1)};
+    }
+
+    /**
+     * Expand a single comma-separated value token. Tokens prefixed with
+     * {@code reg:} are treated as Java {@link Pattern}s and expanded against
+     * the parameter's caller-relevant value set; literal tokens are passed
+     * through unchanged. A malformed pattern falls back to a literal token so
+     * a typo does not abort the whole command.
+     *
+     * <p>Security invariant (commands-api-ADR-001 addendum 2026-05-06):
+     * regex expansion <b>must</b> filter through the execute-time validator
+     * {@link CommandParameter#isRelevant} directly, not through
+     * {@link CommandParameter#relevantValues(UUID)} which is now suggestion-relevance
+     * (default permissive) per the Brigadier-bridge addendum. Mixing the two
+     * would let a {@code reg:.*} token surface values the caller cannot use,
+     * defeating {@link io.github.dailystruggle.commandsapi.common.CommandParameter}'s
+     * authorisation contract. This is the same guarantee {@code RegexParameterSecurityTest}
+     * pins (S-INJ-1 .. S-INJ-18).
+     */
+    static Stream<String> expandRegexToken(String token, CommandParameter parameter, UUID callerId) {
+        if (token == null) return Stream.empty();
+        if (!token.startsWith("reg:")) return Stream.of(token);
+        String patternSrc = token.substring("reg:".length());
+        Pattern pattern;
+        try {
+            pattern = Pattern.compile(patternSrc);
+        } catch (PatternSyntaxException e) {
+            // malformed regex -> treat as literal so the command does not abort
+            return Stream.of(token);
+        }
+        return parameter.values().stream()
+                .filter(v -> parameter.isRelevant.apply(callerId, v))
+                .filter(v -> pattern.matcher(v).matches());
     }
 
     default List<String> help(UUID callerId, Predicate<String> permissionCheckMethod) {

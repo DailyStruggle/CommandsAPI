@@ -1,6 +1,5 @@
 package io.github.dailystruggle.commandsapi.common;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -20,6 +19,13 @@ public interface CommandsAPICommand {
     String description();
     CommandsAPICommand parent();
     void msgBadParameter(UUID callerId, String parameterName, String parameterValue);
+    default void msgBadParameter(UUID callerId, String parameterName, String parameterValue, Consumer<String> messageMethod) {
+        msgBadParameter(callerId, parameterName, parameterValue);
+    }
+    void msgInvalidCommand(UUID callerId, String argument);
+    default void msgInvalidCommand(UUID callerId, String argument, Consumer<String> messageMethod) {
+        msgInvalidCommand(callerId, argument);
+    }
     long avgTime();
 
     /**
@@ -65,6 +71,10 @@ public interface CommandsAPICommand {
      * @return command success, determining whether this api attempts to run nextCommand
      */
     boolean onCommand(UUID callerId, Map<String,List<String>> parameterValues, CommandsAPICommand nextCommand);
+
+    default boolean onCommand(UUID callerId, Map<String,List<String>> parameterValues, CommandsAPICommand nextCommand, java.util.function.Consumer<String> messageMethod) {
+        return onCommand(callerId, parameterValues, nextCommand);
+    }
 
     List<String> help(UUID callerId, Predicate<String> permissionCheckMethod);
 }
