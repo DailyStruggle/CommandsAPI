@@ -21,6 +21,6 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.DailyStruggle:CommandsAPI:1.0.0-RELEASE'
+    implementation 'com.github.DailyStruggle:CommandsAPI:1.0.1-RELEASE'
 }
 ```
